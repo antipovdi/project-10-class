@@ -17,7 +17,7 @@ async def show_objects(message: types.Message, state: FSMContext):
 @router.message(View.choosing_rent_or_sale, F.text.lower().in_(("аренда", "покупка")))
 async def show_objects_rent_or_sale(message: types.Message, state: FSMContext, rent_sale: int):
     rent_sale = 1 if F.text.lower() == "аренда" else -1
-    await message.answer("Вот что я могу предложить для аренды:", reply_markup=get_kb_viewer())
+    await message.answer("Вот что я могу предложить:", reply_markup=get_kb_viewer())
     await state.set_state(View.looking)
 
 

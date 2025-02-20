@@ -13,7 +13,7 @@ async def cmd_start(message: types.Message, state: FSMContext, rent_sale: int):
     rent_sale = 0
     await state.clear()
     await message.answer(
-        "Привет! \n Это бот для продажи/аренды недвижимости. \n Что тебя интересует выложить или просмотреть "
+        "Привет! \n Это бот для продажи/аренды собственности. \n Что тебя интересует разместить или просмотреть?"
         "объявления?",
         reply_markup=get_kb_start())
 
