@@ -11,5 +11,8 @@ class LoadNewObj(StatesGroup):
 
 
 class View(StatesGroup):
-    choosing_rent_or_sale = State()
     looking = State()
+
+
+class Registration(StatesGroup):
+    get_contacts = State()

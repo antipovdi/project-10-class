@@ -11,19 +11,20 @@ router = Router()
 @router.message(StateFilter(None), F.text.lower().contains("разместить"))
 async def new_objects(message: types.Message, state: FSMContext):
     # TODO: создать новое объявление в БД
-    await message.answer("Что тебя интересует? \n Аренда или покупка", reply_markup=get_kb_choose_type())
+    await message.answer("Что тебя интересует? \n Открытый или закрытый аукцион?", reply_markup=get_kb_choose_type())
     await state.set_state(LoadNewObj.choosing_rent_or_sale)
 
 
-@router.message(LoadNewObj.choosing_rent_or_sale, F.text.lower().in_(("аренда", "покупка")))
+@router.message(LoadNewObj.choosing_rent_or_sale, F.text.lower().in_(("открытый", "закрытый")))
 async def new_object_rent_or_sale(message: types.Message, state: FSMContext, rent_sale: int):
-    rent_sale = 1 if F.text.lower() == "аренда" else -1
+    rent_sale = 1 if F.text.lower() == "открытый" else -1
     await state.set_state(LoadNewObj.checking)
     await new_object_check(message)
 
 
 async def new_object_check(message: types.Message):
-    await message.answer("Проверь всё ли верно:", reply_markup=get_kb_checking_object())
+    await message.answer("Так сейчас выглядит твоё объявление:", reply_markup=get_kb_checking_object())
+    # TODO: вывод объявления
 
 
 @router.message(LoadNewObj.checking, F.text.lower().contains("фотографии"))
