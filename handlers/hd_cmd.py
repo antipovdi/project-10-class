@@ -1,7 +1,7 @@
 from aiogram import F, Router, types
 from aiogram.filters.command import Command
 from handlers.my_FSM import Registration
-from keyboards.kb_home import make_kb_from
+from keyboards.keyboards import make_kb_from
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
 

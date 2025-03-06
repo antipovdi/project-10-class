@@ -1,6 +1,6 @@
 from aiogram import F, Router, types
 from aiogram.types import ReplyKeyboardRemove
-from keyboards.kb_home import get_kb_choose_type, get_kb_adding_photos, get_kb_checking_object
+from keyboards.keyboards import get_kb_choose_type, get_kb_adding_photos, get_kb_checking_object
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from handlers.my_FSM import LoadNewObj
@@ -11,7 +11,7 @@ router = Router()
 @router.message(StateFilter(None), F.text.lower().contains("разместить"))
 async def new_objects(message: types.Message, state: FSMContext):
     # TODO: создать новое объявление в БД
-    await message.answer("Что тебя интересует? \n Открытый или закрытый аукцион?", reply_markup=get_kb_choose_type())
+    await message.answer("Сначала заполним необходимые данные. \n Открытый или закрытый аукцион?", reply_markup=get_kb_choose_type())
     await state.set_state(LoadNewObj.choosing_rent_or_sale)
 
 
