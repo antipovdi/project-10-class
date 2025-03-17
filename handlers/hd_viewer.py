@@ -1,6 +1,6 @@
 from aiogram import F, Router, types
 from aiogram.types import ReplyKeyboardRemove
-from keyboards.keyboards import get_kb_viewer
+from templates.keyboards import get_kb_viewer
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from handlers.my_FSM import View
