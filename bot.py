@@ -15,7 +15,8 @@ async def main():
     cur = await con.cursor()
     await cur.execute("CREATE TABLE IF NOT EXISTS \"users\" ("
                     "\"telegram_id\"	INTEGER NOT NULL,"
-                    "\"contacts\"	INTEGER,"
+                    "\"liked\"      TEXT,"    
+                    "\"contacts\"	TEXT,"
                     "PRIMARY KEY(\"telegram_id\")"
                     ")")
     await cur.execute("CREATE TABLE IF NOT EXISTS \"objects\" ("
@@ -24,6 +25,7 @@ async def main():
                     "\"start\"	TEXT NOT NULL,"
                     "\"end\"	TEXT NOT NULL,"
                     "\"cost\"	INTEGER NOT NULL,"
+                    "\"changer\"	INTEGER NOT NULL,"
                     "\"title\"  TEXT NOT NULL,"
                     "\"participants\"	TEXT,"
                     "\"photos\"	TEXT,"

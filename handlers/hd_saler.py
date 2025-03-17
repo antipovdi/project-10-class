@@ -3,10 +3,10 @@ from aiogram.types import ReplyKeyboardRemove
 
 from database.database import DatabaseBot
 from templates.keyboards import get_kb_choose_type, get_kb_adding_photos, get_kb_checking_object, get_kb_refuse
-from templates.text_answer import obj_media_group, obj_text
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from handlers.my_FSM import LoadNewObj, ChangeObj
+from handlers.hd_cmd import cmd_home, show_obj
 import re, datetime
 
 router = Router()
@@ -56,7 +56,7 @@ async def new_obj_time(message: types.Message, state: FSMContext):
 
 
 @router.message(LoadNewObj.cost)
-async def new_obj_cost(message: types.Message, state: FSMContext, db: DatabaseBot):
+async def new_obj_cost(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
     if not re.fullmatch(r"\d+", message.text):
         await message.answer("Стоимость должна быть числом")
         return
@@ -65,20 +65,19 @@ async def new_obj_cost(message: types.Message, state: FSMContext, db: DatabaseBo
     await message.answer("Объявление добавлено, теперь вы можете его скорректировать и добавить информацию")
     await state.set_data({"id": obj_id})
     await state.set_state(ChangeObj.checking)
-    await object_check(message, state, db)
+    await object_check(message, state, db, bot)
 
 
 @router.message(ChangeObj.checking)
-async def object_check(message: types.Message, state: FSMContext, db: DatabaseBot):
+async def object_check(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
     await message.answer("Так сейчас выглядит твоё объявление:")
     data = await state.get_data()
-    data = await db.get_obj(data['id'])
-    if not data['photos'] == []:
-        med = (await obj_media_group(data))
-        await message.answer_media_group(media=med)
-    txt = await obj_text(data)
-    await message.answer(text=txt, reply_markup=get_kb_checking_object())
+    await show_obj(message.chat.id, data['id'], db, bot, get_kb_checking_object())
 
+@router.callback_query(F.data == "home")
+async def goto_home(callback_query: types.CallbackQuery, state:FSMContext, bot: Bot, db: DatabaseBot):
+    await bot.answer_callback_query(callback_query.id)
+    await cmd_home(callback_query.message, state, db)
 
 @router.callback_query(F.data == "photos")
 async def object_goto_load_photos(message: types.Message, state: FSMContext, db: DatabaseBot):
@@ -97,10 +96,10 @@ async def object_load_photos(message: types.Message, state: FSMContext, db: Data
 
 
 @router.message(ChangeObj.load_photos, F.text.lower() == "закончить загрузку фотографий")
-async def object_stop_load_photos(message: types.Message, state: FSMContext, db: DatabaseBot):
+async def object_stop_load_photos(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
     await message.answer("Фотографии обновлены", reply_markup=ReplyKeyboardRemove())
     await state.set_state(ChangeObj.checking)
-    await object_check(message, state, db)
+    await object_check(message, state, db, bot)
 
 
 @router.callback_query(F.data == "describe")
@@ -128,7 +127,7 @@ async def object_goto_change_describe(message: types.Message, state: FSMContext)
 
 
 @router.message(ChangeObj.set_time)
-async def object_change_time(message: types.Message, state: FSMContext, db: DatabaseBot):
+async def object_change_time(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
     if not message.text.lower() == "отменить":
         data = await state.get_data()
         dt = []
@@ -157,37 +156,37 @@ async def object_change_time(message: types.Message, state: FSMContext, db: Data
         await db.change_start(data['id'], dt[0])
         await db.change_end(data['id'], dt[1])
     await state.set_state(ChangeObj.checking)
-    await object_check(message, state, db)
+    await object_check(message, state, db, bot)
 
 
 @router.message(ChangeObj.set_title, F.text)
-async def object_change_title(message: types.Message, state: FSMContext, db: DatabaseBot):
+async def object_change_title(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
     if not message.text.lower() == "отменить":
         data = await state.get_data()
         await db.change_title(data['id'], message.text)
         await message.answer("Название обновлено", reply_markup=ReplyKeyboardRemove())
     await state.set_state(ChangeObj.checking)
-    await object_check(message, state, db)
+    await object_check(message, state, db, bot)
 
 
 @router.message(ChangeObj.set_describe, F.text)
-async def object_change_describe(message: types.Message, state: FSMContext, db: DatabaseBot):
+async def object_change_describe(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
     if not message.text.lower() == "отменить":
         data = await state.get_data()
         await db.change_describe(data['id'], message.text)
         await message.answer("Описание обновлено", reply_markup=ReplyKeyboardRemove())
     await state.set_state(ChangeObj.checking)
-    await object_check(message, state, db)
+    await object_check(message, state, db, bot)
 
 
 @router.message(ChangeObj.set_cost)
-async def object_change_cost(message: types.Message, state: FSMContext, db: DatabaseBot):
+async def object_change_cost(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
     if not message.text.lower() == "отменить":
         if not re.fullmatch(r'\d+', message.text):
             await message.answer(text="Стоимость должна быть числом")
             return
         data = await state.get_data()
-        await db.change_cost(data['id'], int(message.text))
+        await db.change_cost(data['id'], int(message.text), message.from_user.id)
         await message.answer("Стоимость обновлена")
     await state.set_state(ChangeObj.checking)
-    await object_check(message, state, db)
+    await object_check(message, state, db, bot)

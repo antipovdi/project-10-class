@@ -19,6 +19,12 @@ class ChangeObj(StatesGroup):
 
 class View(StatesGroup):
     looking = State()
+    join = State()
+    set_cost = State()
+
+
+class Contact(StatesGroup):
+    change = State()
 
 
 class Registration(StatesGroup):

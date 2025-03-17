@@ -17,6 +17,13 @@ def get_kb_sale() -> ReplyKeyboardMarkup:
 def get_kb_viewer() -> ReplyKeyboardMarkup:
     return make_kb_from(["Дальше", "Участвовать в аукционе", "Добавить в избранное", "На главную"])
 
+def get_kb_participant() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.add(InlineKeyboardButton(text="Выйти", callback_data="quit"))
+    kb.add(InlineKeyboardButton(text="обновить", callback_data="update"))
+    kb.adjust(2)
+    return kb.as_markup()
+
 
 def get_kb_choose_type() -> ReplyKeyboardMarkup:
     return make_kb_from(["Открытый", "Закрытый", "На главную"])
@@ -34,6 +41,7 @@ def get_kb_checking_object() -> InlineKeyboardMarkup:
     kb.add(InlineKeyboardButton(text="Изменить название", callback_data="title"))
     kb.add(InlineKeyboardButton(text="Изменить время", callback_data="time"))
     kb.add(InlineKeyboardButton(text="На главную", callback_data="home"))
+    kb.adjust(2, 2, 2)
     return kb.as_markup()
 
 

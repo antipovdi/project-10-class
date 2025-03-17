@@ -34,9 +34,9 @@ class DatabaseBot:
     async def make_object(self, owner: int, title: str, cost: int, start: datetime.datetime, end: datetime.datetime, open_closed: int):
         async with self.lock:
             async with self.db.cursor() as cursor:
-                await cursor.execute("INSERT INTO objects (owner, title, cost, start, end, code_for_closed) VALUES"
-                                     "(?, ?, ?, ?, ?, ?)",
-                                     (owner, title, cost, start.strftime('%d/%m/%y-%H:%M'), end.strftime('%d/%m/%y-%H:%M'), (secrets.token_hex(32) if open_closed == 1 else "NULL")))
+                await cursor.execute("INSERT INTO objects (owner, title, cost, changer, start, end, code_for_closed) VALUES"
+                                     "(?, ?, ?, ?, ?, ?, ?)",
+                                     (owner, title, cost, owner, start.strftime('%d/%m/%y-%H:%M'), end.strftime('%d/%m/%y-%H:%M'), (secrets.token_hex(32) if open_closed == 1 else "NULL")))
                 return cursor.lastrowid
 
     async def change_photo(self, obj_id: int, photo: list):
@@ -60,8 +60,10 @@ class DatabaseBot:
         async with self.lock:
             async with self.db.execute("SELECT participants FROM objects WHERE id = ?", (obj_id, )) as cursor:
                 new_participants = await cursor.fetchone()
-                new_participants = list(new_participants[0])
-                new_participants.append(participant_id)
+                new_participants = new_participants[0]
+                if new_participants == "NULL":
+                    new_participants = []
+                new_participants.append(str(participant_id))
                 await cursor.execute("UPDATE objects SET participants = ? WHERE id = ?", (' '.join(new_participants), obj_id,))
 
     async def change_describe(self, obj_id: int, describe: str):
@@ -69,10 +71,10 @@ class DatabaseBot:
             async with self.db.cursor() as cursor:
                 await cursor.execute("UPDATE objects SET describe = ? WHERE id = ?", (describe, obj_id,))
 
-    async def change_cost(self, obj_id: int, cost: int):
+    async def change_cost(self, obj_id: int, cost: int, changer: int):
         async with self.lock:
             async with self.db.cursor() as cursor:
-                await cursor.execute("UPDATE objects SET cost = ? WHERE id = ?", (cost, obj_id,))
+                await cursor.execute("UPDATE objects SET cost = ?, changer = ? WHERE id = ?", (cost, changer, obj_id,))
 
     async def change_title(self, obj_id: int, title: str):
         async with self.lock:
@@ -172,3 +174,63 @@ class DatabaseBot:
                     return []
                 return [int(row[0]) for row in res]
 
+    async def get_user_contacts(self, telegram_id: int) -> str:
+        async with self.lock:
+            async with self.db.execute("SELECT contacts FROM users WHERE telegram_id = ?", (telegram_id, )) as cursor:
+                res = await cursor.fetchone()
+                return res[0]
+
+    async def set_user_contacts(self, telegram_id: int, contacts: str):
+        async with self.lock:
+            async with self.db.cursor() as cursor:
+                await cursor.execute("UPDATE users SET contacts = ? WHERE telegram_id = ?", (contacts, telegram_id, ))
+
+    async def like(self, telegram_id: int, obj_id: int):
+        async with self.lock:
+            async with self.db.execute("SELECT liked FROM users WHERE telegram_id = ?", (telegram_id, )) as cursor:
+                new_liked = await cursor.fetchone()
+                new_liked = new_liked[0]
+                if new_liked == "NULL":
+                    new_liked = []
+                else:
+                    new_liked = [new_liked]
+                new_liked.append(str(obj_id))
+                await cursor.execute("UPDATE users SET liked = ? WHERE telegram_id = ?", (';'.join(new_liked), telegram_id,))
+
+    async def unlike(self, telegram_id: int, obj_id: int):
+        async with self.lock:
+            async with self.db.execute("SELECT liked FROM users WHERE telegram_id = ?", (telegram_id, )) as cursor:
+                new_liked = await cursor.fetchone()
+                new_liked = new_liked[0]
+                if new_liked == "NULL":
+                    new_liked = []
+                else:
+                    new_liked = [new_liked.split(';')]
+                    new_liked.remove(str(obj_id))
+                await cursor.execute("UPDATE users SET liked = ? WHERE telegram_id = ?", (';'.join(new_liked), telegram_id,))
+
+    async def get_liked(self, telegram_id: int) -> list[int]:
+        async with self.lock:
+            async with self.db.execute("SELECT liked FROM users WHERE telegram_id = ?", (telegram_id, )) as cursor:
+                liked = await cursor.fetchone()
+                liked = liked[0]
+                if liked == "NULL":
+                    return []
+                else:
+                    new_liked = [liked.split(';')]
+                return [int(i) for i in new_liked]
+
+    async def get_open_auctions(self) -> list[int]:
+        async with self.lock:
+            async with self.db.execute("SELECT id FROM objects WHERE code_for_closed IS NULL AND end > ?", (datetime.datetime.now().strftime("%d/%m/%y-%H:%M"), )) as cursor:
+                obj_ids = list()
+                tup = await cursor.fetchall()
+                for i in tup:
+                    obj_ids.append(i[0])
+                return obj_ids
+
+    async def get_code_of_closed(self, obj_id: int) -> str:
+        async with self.lock:
+            async with self.db.execute("SELECT code_for_closed FROM objects WHERE id = ?", (obj_id, )) as cursor:
+                code = await cursor.fetchone()
+                return code[0]
