@@ -154,10 +154,12 @@ class DatabaseBot:
                     return []
                 return list(res[0].split(' '))
 
-    async def get_obj_code(self, obj_id: int) -> str:
+    async def get_obj_code(self, obj_id: int) -> str|None:
         async with self.lock:
             async with self.db.execute("SELECT code_for_closed FROM objects WHERE id = ?", (obj_id,)) as cursor:
                 res = await cursor.fetchone()
+                if res is None:
+                    return None
                 return res[0]
 
     async def get_obj_cost(self, obj_id: int) -> int:
@@ -214,23 +216,25 @@ class DatabaseBot:
             async with self.db.execute("SELECT liked FROM users WHERE telegram_id = ?", (telegram_id, )) as cursor:
                 liked = await cursor.fetchone()
                 liked = liked[0]
-                if liked == "NULL":
+                if liked is None or liked == "NULL":
                     return []
                 else:
                     new_liked = [liked.split(';')]
                 return [int(i) for i in new_liked]
 
-    async def get_open_auctions(self) -> list[int]:
+    async def get_open_auctions(self, telegram_id: int) -> list[int]:
         async with self.lock:
-            async with self.db.execute("SELECT id FROM objects WHERE code_for_closed IS NULL AND end > ?", (datetime.datetime.now().strftime("%d/%m/%y-%H:%M"), )) as cursor:
+            async with self.db.execute("SELECT id FROM objects WHERE code_for_closed IS NULL AND end > ? AND owner <> ?", (datetime.datetime.now().strftime("%d/%m/%y-%H:%M"), telegram_id, )) as cursor:
                 obj_ids = list()
                 tup = await cursor.fetchall()
                 for i in tup:
                     obj_ids.append(i[0])
                 return obj_ids
 
-    async def get_code_of_closed(self, obj_id: int) -> str:
+    async def get_id_of_closed(self, code: str) -> int|None:
         async with self.lock:
-            async with self.db.execute("SELECT code_for_closed FROM objects WHERE id = ?", (obj_id, )) as cursor:
-                code = await cursor.fetchone()
-                return code[0]
+            async with self.db.execute("SELECT id FROM objects WHERE code_for_closed = ?", (code, )) as cursor:
+                obj_id = await cursor.fetchone()
+                if obj_id is None:
+                    return None
+                return obj_id[0]

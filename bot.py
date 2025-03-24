@@ -5,7 +5,7 @@ import aiosqlite
 from aiogram import Bot, Dispatcher
 
 from config_reader import config
-from handlers import hd_cmd, hd_saler, hd_viewer
+from handlers import hd_cmd, hd_saler, hd_viewer, hd_join
 from database.middlewareBD import DatabaseMiddleware
 
 
@@ -16,7 +16,7 @@ async def main():
     await cur.execute("CREATE TABLE IF NOT EXISTS \"users\" ("
                     "\"telegram_id\"	INTEGER NOT NULL,"
                     "\"liked\"      TEXT,"    
-                    "\"contacts\"	TEXT,"
+                    "\"contacts\"	TEXT NOT NULL,"
                     "PRIMARY KEY(\"telegram_id\")"
                     ")")
     await cur.execute("CREATE TABLE IF NOT EXISTS \"objects\" ("
@@ -44,7 +44,7 @@ async def main():
     bot = Bot(token=config.bot_token.get_secret_value())
     # Диспетчер
     dp = Dispatcher()
-    dp.include_routers(hd_cmd.router, hd_viewer.router, hd_saler.router)
+    dp.include_routers(hd_cmd.router, hd_viewer.router, hd_saler.router, hd_join.router)
     dp.update.middleware(DatabaseMiddleware(db_file))
     # Запуск процесса поллинга новых апдейтов
     await bot.delete_webhook(drop_pending_updates=True)

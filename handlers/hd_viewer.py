@@ -1,71 +1,66 @@
-import asyncio
-
 from aiogram import F, Router, types, Bot
-from aiogram.types import ReplyKeyboardRemove
-from xdg.Locale import regex
+from handlers.hd_cmd import cmd_home
 
 from database.database import DatabaseBot
-from templates.keyboards import get_kb_viewer, get_kb_participant
+from templates.keyboards import get_kb_viewer, get_kb_my_viewer, get_kb_like_viewer
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from handlers.my_FSM import View
+from handlers.my_FSM import View, ChangeObj
 from handlers.hd_cmd import show_obj
-from templates.text_answer import obj_media_group, obj_text
+from handlers.hd_saler import object_check
 
 router = Router()
 
-
-@router.message(StateFilter(None), F.text.lower().contains("посмотреть"))
-async def show_objects(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
-    obj_ids = await db.get_open_auctions()
-    await state.set_data({"obj_ids": obj_ids})
-    await message.answer("Вот, что есть на выбор:", reply_markup=get_kb_viewer())
-    await show_obj(message.chat.id, obj_ids[0], db, bot, get_kb_viewer())
+@router.message(StateFilter(None), F.text.lower().in_({"посмотреть объявления", "мои объявления", "избранное"}))
+async def look_objects(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
+    if message.text.lower() == "мои объявления":
+        obj_ids = await db.get_objs_id_by_owner(message.from_user.id)
+        kb = get_kb_my_viewer()
+    elif message.text.lower() == "избранное":
+        obj_ids = await db.get_liked(message.from_user.id)
+        kb = get_kb_like_viewer()
+    else:
+        obj_ids = await db.get_open_auctions(message.from_user.id)
+        kb = get_kb_viewer()
+    await state.set_data({'obj_ids': obj_ids, 'kb': kb})
     await state.set_state(View.looking)
+    await show_objects(message, state, db, bot)
+
+async def show_objects(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
+    data = await state.get_data()
+    if len(data['obj_ids']) == 0:
+        await message.answer("Нет никаких объявлений")
+        await cmd_home(message, state, db)
+    else:
+        await show_obj(message.chat.id, data['obj_ids'][0], db, bot, data['kb'])
+        await state.set_state(View.looking)
 
 
 @router.message(View.looking, F.text.lower() == "дальше")
 async def show_objects_next(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
-    obj_ids = await state.get_data()
-    obj_ids = obj_ids["obj_ids"]
-    obj_mes = await show_obj(message.chat.id, obj_ids[1], db, bot, get_kb_viewer())
-    await state.update_data(obj_ids=obj_ids[1:], obj_mes=obj_mes)
+    data = await state.get_data()
+    data['obj_ids'].pop(0)
+    await state.update_data(obj_ids=data['obj_ids'])
+    await show_objects(message, state, db, bot)
 
 
 @router.message(View.looking, F.text.lower().contains("избранное"))
-async def show_objects_liked(message: types.Message, state: FSMContext, db: DatabaseBot):
-    obj_ids = await state.get_data()
-    obj_ids = obj_ids["obj_ids"]
-    await db.like(message.from_user.id, obj_ids[0])
-    await message.reply("Добавлено в избранное!", reply_markup=get_kb_viewer())
-    await show_objects_next()
+async def show_objects_liked(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
+    data = await state.get_data()
+    await db.like(message.from_user.id, data["obj_ids"][0])
+    await message.reply("Добавлено в избранное!", reply_markup=data['kb'])
 
 
-@router.message(View.looking, F.text.lower().contains("участвовать"))
-async def show_objects_join(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
-    obj_ids = await state.get_data()
-    obj_ids = obj_ids["obj_ids"]
-    await show_obj(message.chat.id, obj_ids[0], db, bot, get_kb_participant())
-    await state.set_state(View.join)
+@router.message(View.looking, F.text.lower().contains("изменить"))
+async def change_my_obj(message: types.Message, state: FSMContext, db: DatabaseBot, bot: Bot):
+    data = await state.get_data()
+    await state.set_state(ChangeObj.checking)
+    await state.set_data({'id': data['obj_ids'][0]})
+    await object_check(message, state, db, bot)
 
 
-@router.callback_query(F.data == "quit")
-async def update_object(state: FSMContext):
-    await state.set_state(View.looking)
-
-
-@router.callback_query(F.data == "update")
-async def update_object(callback_query: types.CallbackQuery, state: FSMContext, db: DatabaseBot):
-    obj_ids = await state.get_data()
-    obj_id = obj_ids["obj_ids"][0]
-    data = await db.get_obj(obj_id)
-    txt = await obj_text(data)
-    await callback_query.message.edit_text(txt)
-
-
-
-@router.message(View.join, F.text.regexp(r'\d+'))
-async def joining(message: types.Message, state: FSMContext, db: DatabaseBot):
-    obj_ids = await state.get_data()
-    obj_ids = obj_ids["obj_ids"]
-    await db.change_cost(obj_ids[1], int(message.text), message.from_user.id)
+@router.message(View.looking, F.text.lower() == "удалить из избранного")
+async def show_objects_unliked(message: types.Message, state: FSMContext, db: DatabaseBot):
+    data = await state.get_data()
+    await db.unlike(message.from_user.id, data["obj_ids"][0])
+    await message.reply("Удалено из избранного!", reply_markup=data['kb'])

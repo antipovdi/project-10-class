@@ -1,10 +1,12 @@
+from pyexpat.errors import messages
+
 from aiogram import F, Router, types, Bot
 from aiogram.filters import StateFilter
 from aiogram.filters.command import Command
 
 from database.database import DatabaseBot
 from handlers.my_FSM import Registration
-from templates.keyboards import make_kb_from
+from templates.keyboards import get_kb_home
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, InlineKeyboardMarkup
 from handlers.my_FSM import Contact
@@ -36,13 +38,14 @@ async def reg_any_other(message: types.Message, state: FSMContext, db: DatabaseB
 @router.message(F.text.lower() == "на главную")
 async def cmd_home(message: types.Message, state: FSMContext, db: DatabaseBot):
     await state.clear()
-    contacts = await db.get_user_contacts(message.from_user.id)
+    contacts = await db.get_user_contacts(message.chat.id)
     await message.answer(f"Контакты: указанные вами: {contacts} \n\n Что интересует?",
-                         reply_markup=make_kb_from(["Посмотреть объявления", "Разместить объявление", "Мои объявления", "Избранное", "Изменить контакты"]))
+                         reply_markup=get_kb_home())
 
 
 @router.message(StateFilter(None), F.text.lower().contains("контакты"))
-async def change_contacts(state: FSMContext):
+async def change_contacts(message: types.Message, state: FSMContext):
+    await message.answer("Введите новую информацию")
     await state.set_state(Contact.change)
 
 
@@ -58,4 +61,8 @@ async def show_obj(chat_id: int, obj_id: int, db: DatabaseBot, bot: Bot, kb: Inl
         med = (await obj_media_group(data))
         await bot.send_media_group(chat_id=chat_id, media=med)
     txt = await obj_text(data)
-    return await bot.send_message(chat_id=chat_id, text=txt, reply_markup=kb)
+    mes = await bot.send_message(chat_id=chat_id, text=txt, reply_markup=kb)
+    if not data['code'] is None:
+        await bot.send_message(chat_id=chat_id, text=f"Код закрытого аукциона: {data['code']}")
+    return mes
+

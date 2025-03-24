@@ -13,9 +13,17 @@ def make_kb_from(args) -> ReplyKeyboardMarkup:
 def get_kb_sale() -> ReplyKeyboardMarkup:
     return make_kb_from(["Покупка", "Продажа", "На главную"])
 
+def get_kb_home() -> ReplyKeyboardMarkup:
+    return make_kb_from(["Посмотреть объявления", "Разместить объявление", "Мои объявления", "Избранное", "Изменить контакты"])
 
 def get_kb_viewer() -> ReplyKeyboardMarkup:
     return make_kb_from(["Дальше", "Участвовать в аукционе", "Добавить в избранное", "На главную"])
+
+def get_kb_my_viewer() -> ReplyKeyboardMarkup:
+    return make_kb_from(["Дальше", "Изменить", "Добавить в избранное", "На главную"])
+
+def get_kb_like_viewer() -> ReplyKeyboardMarkup:
+    return make_kb_from(["Дальше", "Участвовать в аукционе", "Удалить из избранного", "На главную"])
 
 def get_kb_participant() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
