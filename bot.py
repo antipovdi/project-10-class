@@ -7,6 +7,8 @@ from aiogram import Bot, Dispatcher
 from config_reader import config
 from handlers import hd_cmd, hd_saler, hd_viewer, hd_join
 from database.middlewareBD import DatabaseMiddleware
+from database.database import DatabaseBot
+from handlers.timer import timer
 
 
 async def main():
@@ -50,6 +52,8 @@ async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot,
                            rent_sale=0)
+    async with DatabaseBot(db_file) as db:
+        await timer(bot, db)
 
 
 if __name__ == "__main__":

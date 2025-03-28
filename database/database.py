@@ -1,4 +1,5 @@
 import asyncio
+from pkgutil import get_data
 
 import aiosqlite
 import datetime
@@ -36,7 +37,7 @@ class DatabaseBot:
             async with self.db.cursor() as cursor:
                 await cursor.execute("INSERT INTO objects (owner, title, cost, changer, start, end, code_for_closed) VALUES"
                                      "(?, ?, ?, ?, ?, ?, ?)",
-                                     (owner, title, cost, owner, start.strftime('%d/%m/%y-%H:%M'), end.strftime('%d/%m/%y-%H:%M'), (secrets.token_hex(32) if open_closed == 1 else "NULL")))
+                                     (owner, title, cost, owner, start.strftime('%y/%m/%d-%H:%M'), end.strftime('%y/%m/%d-%H:%M'), (secrets.token_hex(32) if open_closed == 1 else "NULL")))
                 return cursor.lastrowid
 
     async def change_photo(self, obj_id: int, photo: list):
@@ -84,12 +85,12 @@ class DatabaseBot:
     async def change_start(self, obj_id: int, start: datetime):
         async with self.lock:
             async with self.db.cursor() as cursor:
-                await cursor.execute("UPDATE objects SET start = ? WHERE id = ?", (start.strftime('%d/%m/%y-%H:%M'), obj_id,))
+                await cursor.execute("UPDATE objects SET start = ? WHERE id = ?", (start.strftime('%y/%m/%d-%H:%M'), obj_id,))
 
     async def change_end(self, obj_id: int, end: datetime):
         async with self.lock:
             async with self.db.cursor() as cursor:
-                await cursor.execute("UPDATE objects SET end = ? WHERE id = ?", (end.strftime('%d/%m/%y-%H:%M'), obj_id,))
+                await cursor.execute("UPDATE objects SET end = ? WHERE id = ?", (end.strftime('%y/%m/%d-%H:%M'), obj_id,))
 
     async def get_obj(self, obj_id: int) -> dict:
         data = {
@@ -99,6 +100,7 @@ class DatabaseBot:
             "start": await self.get_obj_start(obj_id),
             "end": await self.get_obj_end(obj_id),
             "cost": await self.get_obj_cost(obj_id),
+            "changer": await self.get_obj_changer(obj_id),
             "code": await self.get_obj_code(obj_id),
             "owner": await self.get_obj_owner(obj_id),
             "participants": await self.get_obj_participants(obj_id),
@@ -138,13 +140,13 @@ class DatabaseBot:
         async with self.lock:
             async with self.db.execute("SELECT start FROM objects WHERE id = ?", (obj_id,)) as cursor:
                 res = await cursor.fetchone()
-                return datetime.datetime.strptime(res[0], "%d/%m/%y-%H:%M")
+                return datetime.datetime.strptime(res[0], "%y/%m/%d-%H:%M")
 
     async def get_obj_end(self, obj_id: int) -> datetime:
         async with self.lock:
             async with self.db.execute("SELECT end FROM objects WHERE id = ?", (obj_id,)) as cursor:
                 res = await cursor.fetchone()
-                return datetime.datetime.strptime(res[0], "%d/%m/%y-%H:%M")
+                return datetime.datetime.strptime(res[0], "%y/%m/%d-%H:%M")
 
     async def get_obj_participants(self, obj_id: int) -> list:
         async with self.lock:
@@ -165,6 +167,12 @@ class DatabaseBot:
     async def get_obj_cost(self, obj_id: int) -> int:
         async with self.lock:
             async with self.db.execute("SELECT cost FROM objects WHERE id = ?", (obj_id,)) as cursor:
+                res = await cursor.fetchone()
+                return int(res[0])
+
+    async def get_obj_changer(self, obj_id: int) -> int:
+        async with self.lock:
+            async with self.db.execute("SELECT changer FROM objects WHERE id = ?", (obj_id,)) as cursor:
                 res = await cursor.fetchone()
                 return int(res[0])
 
@@ -224,7 +232,7 @@ class DatabaseBot:
 
     async def get_open_auctions(self, telegram_id: int) -> list[int]:
         async with self.lock:
-            async with self.db.execute("SELECT id FROM objects WHERE code_for_closed IS NULL AND end > ? AND owner <> ?", (datetime.datetime.now().strftime("%d/%m/%y-%H:%M"), telegram_id, )) as cursor:
+            async with self.db.execute("SELECT id FROM objects WHERE code_for_closed IS NULL AND end > ? AND owner <> ?", (datetime.datetime.now().strftime("%y/%m/%d-%H:%M"), telegram_id, )) as cursor:
                 obj_ids = list()
                 tup = await cursor.fetchall()
                 for i in tup:
@@ -238,3 +246,36 @@ class DatabaseBot:
                 if obj_id is None:
                     return None
                 return obj_id[0]
+
+    async def get_finished(self) -> list[int]:
+        async with self.lock:
+            async with self.db.execute("SELECT id FROM objects") as cursor:
+                obj_ids = list()
+                tup = await cursor.fetchall()
+                for i in tup:
+                    obj_ids.append(i[0])
+        arr = []
+        for obj_id in obj_ids:
+            data = await self.get_obj(obj_id)
+            if data['end'] > datetime.datetime.now():
+                arr.append(obj_id)
+        return arr
+
+    async def get_start_soon(self) -> list[int]:
+        async with self.lock:
+            async with self.db.execute("SELECT id FROM objects") as cursor:
+                obj_ids = list()
+                tup = await cursor.fetchall()
+                for i in tup:
+                    obj_ids.append(i[0])
+        arr = []
+        for obj_id in obj_ids:
+            data = await self.get_obj(obj_id)
+            if datetime.datetime.now() < data['start'] < datetime.datetime.now() + datetime.timedelta(seconds=10):
+                arr.append(obj_id)
+        return arr
+
+    async def del_obj(self, obj_id: int):
+        async with self.lock:
+            async with self.db.cursor() as cursor:
+                await cursor.execute("DELETE FROM objects WHERE id = ?", (obj_id,))

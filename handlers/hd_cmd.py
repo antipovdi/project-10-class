@@ -55,7 +55,7 @@ async def new_contacts(message: types.Message, state: FSMContext, db: DatabaseBo
     await cmd_home(message, state, db)
 
 
-async def show_obj(chat_id: int, obj_id: int, db: DatabaseBot, bot: Bot, kb: InlineKeyboardMarkup|ReplyKeyboardMarkup) -> types.Message:
+async def show_obj(chat_id: int, obj_id: int, db: DatabaseBot, bot: Bot, kb: InlineKeyboardMarkup|ReplyKeyboardMarkup|ReplyKeyboardRemove) -> types.Message:
     data = await db.get_obj(obj_id)
     if not data['photos'] == []:
         med = (await obj_media_group(data))
