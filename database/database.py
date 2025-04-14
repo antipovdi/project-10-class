@@ -37,7 +37,7 @@ class DatabaseBot:
             async with self.db.cursor() as cursor:
                 await cursor.execute("INSERT INTO objects (owner, title, cost, changer, start, end, code_for_closed) VALUES"
                                      "(?, ?, ?, ?, ?, ?, ?)",
-                                     (owner, title, cost, owner, start.strftime('%y/%m/%d-%H:%M'), end.strftime('%y/%m/%d-%H:%M'), (secrets.token_hex(32) if open_closed == 1 else "NULL")))
+                                     (owner, title, cost, owner, start.strftime('%y/%m/%d-%H:%M'), end.strftime('%y/%m/%d-%H:%M'), (secrets.token_hex(32) if open_closed == -1 else "NULL")))
                 return cursor.lastrowid
 
     async def change_photo(self, obj_id: int, photo: list):
@@ -257,7 +257,7 @@ class DatabaseBot:
         arr = []
         for obj_id in obj_ids:
             data = await self.get_obj(obj_id)
-            if data['end'] > datetime.datetime.now():
+            if data['end'] < datetime.datetime.now():
                 arr.append(obj_id)
         return arr
 
@@ -271,7 +271,7 @@ class DatabaseBot:
         arr = []
         for obj_id in obj_ids:
             data = await self.get_obj(obj_id)
-            if datetime.datetime.now() < data['start'] < datetime.datetime.now() + datetime.timedelta(seconds=10):
+            if datetime.datetime.now() > data['start'] > datetime.datetime.now() - datetime.timedelta(seconds=10):
                 arr.append(obj_id)
         return arr
 

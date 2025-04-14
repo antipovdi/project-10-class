@@ -62,7 +62,7 @@ async def show_obj(chat_id: int, obj_id: int, db: DatabaseBot, bot: Bot, kb: Inl
         await bot.send_media_group(chat_id=chat_id, media=med)
     txt = await obj_text(data)
     mes = await bot.send_message(chat_id=chat_id, text=txt, reply_markup=kb)
-    if not data['code'] is None:
+    if data['code'] != 'NULL':
         await bot.send_message(chat_id=chat_id, text=f"Код закрытого аукциона: {data['code']}")
     return mes
 

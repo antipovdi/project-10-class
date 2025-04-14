@@ -64,3 +64,10 @@ async def show_objects_unliked(message: types.Message, state: FSMContext, db: Da
     data = await state.get_data()
     await db.unlike(message.from_user.id, data["obj_ids"][0])
     await message.reply("Удалено из избранного!", reply_markup=data['kb'])
+
+
+@router.message(View.looking, F.text.lower() == "удалить")
+async def show_objects_unliked(message: types.Message, state: FSMContext, db: DatabaseBot):
+    data = await state.get_data()
+    await db.del_obj(data["obj_ids"][0])
+    await message.reply("Удалено!", reply_markup=data['kb'])

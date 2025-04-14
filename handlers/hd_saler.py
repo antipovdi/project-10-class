@@ -20,7 +20,7 @@ async def new_objects(message: types.Message, state: FSMContext):
 
 @router.message(LoadNewObj.choosing_open_or_close, F.text.lower().in_(("открытый", "закрытый")))
 async def new_object_open_or_closed(message: types.Message, state: FSMContext):
-    await state.update_data(open_close = 1 if F.text.lower() == "открытый" else -1)
+    await state.update_data(open_close = (1 if message.text == "открытый" else -1))
     await message.answer("Задайте название объявлению", reply_markup=ReplyKeyboardRemove())
     await state.set_state(LoadNewObj.title)
 
@@ -144,11 +144,6 @@ async def object_change_time(message: types.Message, state: FSMContext, db: Data
             dt.insert(0, datetime.datetime.now())
             if dt[1] < datetime.datetime.now():
                 await message.answer(text="Нельзя поставить время в прошлом")
-                return
-        else:
-            start = await db.get_obj_start(data['id'])
-            if start < datetime.datetime.now():
-                await message.answer(text="Нельзя изменить время начала, аукцион уже идёт")
                 return
         if dt[0] >= dt[1]:
             await message.answer("Дата и время не согласованы (начало позже конца)")
