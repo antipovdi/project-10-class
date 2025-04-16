@@ -20,7 +20,7 @@ async def new_objects(message: types.Message, state: FSMContext):
 
 @router.message(LoadNewObj.choosing_open_or_close, F.text.lower().in_(("открытый", "закрытый")))
 async def new_object_open_or_closed(message: types.Message, state: FSMContext):
-    await state.update_data(open_close = (1 if message.text == "открытый" else -1))
+    await state.update_data(open_close = (1 if message.text.lower() == "открытый" else -1))
     await message.answer("Задайте название объявлению", reply_markup=ReplyKeyboardRemove())
     await state.set_state(LoadNewObj.title)
 

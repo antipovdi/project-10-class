@@ -118,7 +118,7 @@ class DatabaseBot:
         async with self.lock:
             async with self.db.execute("SELECT photos FROM objects WHERE id = ?", (obj_id,)) as cursor:
                 res = await cursor.fetchone()
-                if res[0] is None:
+                if (res is None) or (res[0] is None):
                     return []
                 return list(res[0].split(';'))
 
@@ -232,7 +232,7 @@ class DatabaseBot:
 
     async def get_open_auctions(self, telegram_id: int) -> list[int]:
         async with self.lock:
-            async with self.db.execute("SELECT id FROM objects WHERE code_for_closed IS NULL AND end > ? AND owner <> ?", (datetime.datetime.now().strftime("%y/%m/%d-%H:%M"), telegram_id, )) as cursor:
+            async with self.db.execute("SELECT id FROM objects WHERE code_for_closed IS \"NULL\" AND owner <> ?", (telegram_id, )) as cursor:
                 obj_ids = list()
                 tup = await cursor.fetchall()
                 for i in tup:
